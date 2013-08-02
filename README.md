@@ -1,102 +1,53 @@
+Quick install YouTrack to OpenShift
+===================================
+
+JetBrains offers a free license for its wonderful issue tracker called YouTrack, the responsive web design of YouTrack is enough to manage tasks from any device. Furthermore, RedHat and its fabulous product OpenShift offers free hosting for almost all main technologies, this solution is enough to manage tasks from anywhere (ok, anywhere with an internet connection). YouTrack is based on Java and OpenShift support Java, perfect solution was found.
+
+
+How to install
+--------------
+If you don't have OpenShift account yet you can open it here https://openshift.redhat.com/app/account/new
+
+Go to create Tomcat 7 application page https://openshift.redhat.com/app/console/application_type/cart!jbossews-2.0
+
+Select name for your application, for example `youtrack`. It will be used in URL of your YouTrack instance. If you don't like it you can add your own domain (alias) later.
+
+Click on the change Source Code link and set URL to this Git repository, i.e. https://github.com/stokito/youtrack-openshift.git
+
+Click on Create Application button, and wait till YouTrack will deployed.
+
+You should get to the created application page. At the top of this page should be link to your deployed YouTrack. Open it.
+
+Now you need to wait first YouTrack run. It may take a lot of time and you may get 502 Proxy Timeout Error, but don't afraid and just refresh page once again.
+
+If installation successful you will see basic YouTrack settings page.
+
+If something went wrong just create a issue to this project with error messages.
+
+YouTrack version
+----------------
+This repo contains YouTrack 5.0.
+If you want to refresh version just fork this repo and replace `webapps/ROOT.war` with new downloaded YouTrack WAR file.
+It can be downloaded from JetBrains site http://www.jetbrains.com/youtrack/download/get_youtrack.html (select JavaEE container version).
+
+Please, don't forget to send a pull request.
+
 Repo layout
-=========== 
-webapps/ - location for built wars (Details below)
-src/ - Maven src structure
-pom.xml - Maven build file  
-.openshift/ - location for openshift specific files
-.openshift/config/ - location for configuration files such as standalone.xml (used to modify jboss config such as datasources) 
-.openshift/action_hooks/pre_build - Script that gets run every git push before the build (on the CI system if available)
-.openshift/action_hooks/build - Script that gets run every git push as part of the build process (on the CI system if available)
-.openshift/action_hooks/deploy - Script that gets run every git push after build but before the app is restarted
-.openshift/action_hooks/post_deploy - Script that gets run every git push after the app is restarted
-.openshift/action_hooks/pre_start_jbossews-1.0 - Script that gets run prior to starting EWS1.0
-.openshift/action_hooks/post_start_jbossews-1.0 - Script that gets run after EWS1.0 is started
-.openshift/action_hooks/pre_stop_jbossews-1.0 - Script that gets run prior to stopping EWS1.0
-.openshift/action_hooks/post_stop_jbossews-1.0 - Script that gets run after EWS1.0 is stopped
+-----------
+`webapps/` - location for built war
 
+`webapps/ROOT.war` - YouTrack WAR file
 
-Notes about layout
-==================
-Note: Every time you push, everything in your remote repo dir gets recreated
-      please store long term items (like an sqlite database) in the OpenShift
-      data directory, which will persist between pushes of your repo.
-      The OpenShift data directory is accessible relative to the remote repo
-      directory (../data) or via an environment variable OPENSHIFT_DATA_DIR.
+`.openshift/` - location for openshift specific files
 
+`.openshift/action_hooks/deploy` - Deploy script - creates DB directories teamsysdata and teamsysdata-backup
 
-Details about layout and deployment options
-==================
-There are two options for deploying content to the Tomcat Server within OpenShift. Both options
-can be used together (i.e. build one archive from source and others pre-built)
+`.openshift/action_hooks/pre_start_jbossews-1.0` - Script that gets run prior to starting EWS1.0 (Tomcat 6). Setup environment variables: PermGen size and YouTrack's DB dir path.
 
-1) (Preferred) You can upload your content in a Maven src structure as is this sample project and on 
-git push have the application built and deployed.  For this to work you'll need your pom.xml at the 
-root of your repository and a maven-war-plugin like in this sample to move the output from the build
-to the webapps directory.  By default the warName is ROOT within pom.xml.  This will cause the 
-webapp contents to be rendered at http://app_name-namespace.rhcloud.com/.  If you change the warName in 
-pom.xml to app_name, your base url would then become http://app_name-namespace.rhcloud.com/app_name.
+`.openshift/action_hooks/pre_start_jbossews-2.0` - Script that gets run prior to starting EWS2.0 (Tomcat 7). Setup environment variables: PermGen size and YouTrack's DB dir path.
 
-Note: If you are building locally you'll also want to add any output wars under webapps 
-from the build to your .gitignore file.
-
-Note: If you are running scaled EWS1.0 then you need an application deployed to the root context (i.e. 
-http://app_name-namespace.rhcloud.com/) for the HAProxy load-balancer to recognize that the EWS1.0 instance 
-is active.
-
-or
-
-2) You can git push pre-built wars into webapps/.  To do this
-with the default repo you'll want to first run 'git rm -r src/ pom.xml' from the root of your repo.
-
-Basic workflows for deploying pre-built content (each operation will require associated git add/commit/push operations to take effect):
-
-A) Add new zipped content and deploy it:
-
-1. cp target/example.war webapps/
-
-B) Undeploy currently deployed content:
-
-1. git rm webapps/example.war
-
-C) Replace currently deployed zipped content with a new version and deploy it:
-
-1. cp target/example.war webapps/
-
-Note: You can get the information in the uri above from running 'rhc domain show'
-
-If you have already committed large files to your git repo, you rewrite or reset the history of those files in git
-to an earlier point in time and then 'git push --force' to apply those changes on the remote OpenShift server.  A 
-git gc on the remote OpenShift repo can be forced with (Note: tidy also does other cleanup including clearing log
-files and tmp dirs):
-
-rhc app tidy -a appname
-
-
-Whether you choose option 1) or 2) the end result will be the application 
-deployed into the webapps directory. The webapps directory in the 
-Tomcat distribution is the location end users can place 
-their deployment content (e.g. war, ear, jar, sar files) to have it 
-automatically deployed into the server runtime.
-
-Environment Variables
-=====================
-
-OpenShift provides several environment variables to reference for ease
-of use.  The following list are some common variables but far from exhaustive:
-
-    System.getenv("OPENSHIFT_APP_NAME")  - Application name
-    System.getenv("OPENSHIFT_DATA_DIR")  - For persistent storage (between pushes)
-    System.getenv("OPENSHIFT_TMP_DIR")   - Temp storage (unmodified files deleted after 10 days)
-    System.getenv("OPENSHIFT_INTERNAL_IP")  - The IP address used to bind EWS1.0
-
-When embedding a database using 'rhc app cartridge add', you can reference environment
-variables for username, host and password. For example, when embedding MySQL 5.1, the 
-following variables will be available:
-
-    System.getenv("OPENSHIFT_MYSQL_DB_HOST")      - DB host
-    System.getenv("OPENSHIFT_MYSQL_DB_PORT")      - DB Port
-    System.getenv("OPENSHIFT_MYSQL_DB_USERNAME")  - DB Username
-    System.getenv("OPENSHIFT_MYSQL_DB_PASSWORD")  - DB Password
-
-To get a full list of environment variables, simply add a line in your
-.openshift/action_hooks/build script that says "export" and push.
+Some helpful articles
+---------------------
+* [Cloudify YouTrack on OpenShift](http://www.codenibbles.com/blog/2012/07/16/cloudify-youtrack-on-openshift/)
+* [YouTrack on OpenShift, quick and simple](http://toub.es/2013/07/15/youtrack-openshift-quick-and-simple)
+* [In Russian: Как получить лучший трекер YouTrack бесплатно?](http://stokito.wordpress.com/2013/08/01/%d0%ba%d0%b0%d0%ba-%d0%bf%d0%be%d0%bb%d1%83%d1%87%d0%b8%d1%82%d1%8c-%d0%bb%d1%83%d1%87%d1%88%d0%b8%d0%b9-%d1%82%d1%80%d0%b5%d0%ba%d0%b5%d1%80-youtrack-%d0%b1%d0%b5%d1%81%d0%bf%d0%bb%d0%b0%d1%82%d0%bd/)
