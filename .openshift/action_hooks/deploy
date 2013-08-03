@@ -6,15 +6,4 @@
 set -x
 mkdir $OPENSHIFT_DATA_DIR/teamsysdata
 mkdir $OPENSHIFT_DATA_DIR/teamsysdata-backup
-cd $OPENSHIFT_REPO_DIR/webapps
-rm ROOT.war
-wget http://download.jetbrains.com/charisma/archive/youtrack-4.0.2.war
-mv youtrack-4.0.2.war ROOT.war
-jar -xvf ROOT.war
-sed -ig 's,${user.home}/teamsysdata-backup,${user.home}/app-root/data/teamsysdata-backup,' WEB-INF/web.xml
-sed -ig 's,${user.home}/teamsysdata,${user.home}/app-root/data/teamsysdata,' WEB-INF/web.xml
-rm ROOT.war
-jar cvf ROOT.war .
-rm -rf META-INF
-rm -rf WEB-INF
 
